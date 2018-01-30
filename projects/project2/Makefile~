@@ -1,0 +1,13 @@
+all: pre_math_64.out
+
+
+
+pre_math_64.out: pre_math_64.asm # using printf                                         
+
+	nasm -g -f elf64 pre_math_64.asm
+
+	gcc -g3 -m64 -o test_math_64 test_math_64.c pre_math_64.o
+
+	./test_math_64 > test_math_64.out
+
+	cat test_math_64.out

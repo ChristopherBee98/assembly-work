@@ -1,0 +1,204 @@
+     1                                  	;;  intarith_64.asm    show some simple C code and corresponding nasm code
+     2                                  	;;                     the nasm code is one sample, not unique
+     3                                  	;;
+     4                                  	;;  compile:	nasm -f elf64 -l intarith_64.lst  intarith_64.asm
+     5                                  	;;  link:		gcc -m64 -o intarith_64  intarith_64.o
+     6                                  	;;  run:		./intarith_64
+     7                                  	;;
+     8                                  	;;  the output from running intarith.c is:
+     9                                  	;;  c=5  , a=3, b=4, c=5
+    10                                  	;;  c=a+b, a=3, b=4, c=7
+    11                                  	;;  c=a-b, a=3, b=4, c=-1
+    12                                  	;;  c=a*b, a=3, b=4, c=12
+    13                                  	;;  c=c/a, a=3, b=4, c=4
+    14                                  	;;
+    15                                  	;; The file  intarith.c  is:
+    16                                  	;;   /* intarith.c */
+    17                                  	;;   #include <stdio.h>
+    18                                  	;;   int main()
+    19                                  	;;   {
+    20                                  	;;     long int a=3, b=4, c;
+    21                                  	;;     c=5;
+    22                                  	;;     printf("%s, a=%ld, b=%ld, c=%ld\n","c=5  ", a, b, c);
+    23                                  	;;     c=a+b;
+    24                                  	;;     printf("%s, a=%ld, b=%ld, c=%ld\n","c=a+b", a, b, c);
+    25                                  	;;     c=a-b;
+    26                                  	;;     printf("%s, a=%ld, b=%ld, c=%ld\n","c=a-b", a, b, c);
+    27                                  	;;     c=a*b;
+    28                                  	;;     printf("%s, a=%ld, b=%ld, c=%ld\n","c=a*b", a, b, c);
+    29                                  	;;     c=c/a;
+    30                                  	;;     printf("%s, a=%ld, b=%ld, c=%ld\n","c=c/a", a, b, c);
+    31                                  	;;     return 0;
+    32                                  	;;  }
+    33                                  	        extern printf	; the C function to be called
+    34                                  
+    35                                  	%macro	pabc 1		; a "simple" print macro
+    36                                  	section .data
+    37                                  	.str	db	%1,0	; %1 is first actual in macro call
+    38                                  	section .text
+    39                                  	        mov     rdi, fmt4 ; first arg, format
+    40                                  	mov	rsi, .str	  ; second arg
+    41                                  	mov     rdx, [a]	  ; third arg
+    42                                  	mov     rcx, [b]	  ; fourth arg
+    43                                  	mov     r8, [c]		  ; fifth arg
+    44                                  	mov     rax, 0		  ; no xmm used
+    45                                  	call    printf		  ; Call C function
+    46                                  	%endmacro
+    47                                  
+    48                                  	section .data  		; preset constants, writeable
+    49 00000000 0300000000000000        a:		dq	3	; 64-bit variable a initialized to 3
+    50 00000008 0400000000000000        b:		dq	4	; 64-bit variable b initializes to 4
+    51 00000010 25732C20613D256C64-     fmt4:		db "%s, a=%ld, b=%ld, c=%ld",10,0 ; format string for printf
+    52 00000019 2C20623D256C642C20-
+    53 00000022 633D256C640A00     
+    54                                  
+    55                                  	section .bss 		; unitialized space
+    56 00000000 <res 00000008>          c:		resq	1	; reserve a 64-bit word
+    57                                  
+    58                                  	section .text		; instructions, code segment
+    59                                  	global	 main		; for gcc standard linking
+    60                                  main:				; label
+    61 00000000 55                      	push 	rbp		; set up stack
+    62                                  lit5:				; c=5;
+    63 00000001 48B805000000000000-     	mov	rax,5	 	; 5 is a literal constant
+    64 0000000A 00                 
+    65 0000000B 48890425[00000000]      	mov	[c],rax		; store into c
+    66                                  	pabc	"c=5  "		; invoke the print macro
+    67                              <1>  section .data
+    68 00000029 633D35202000        <1>  .str db %1,0
+    69                              <1>  section .text
+    70 00000013 48BF-               <1>  mov rdi, fmt4
+    71 00000015 [1000000000000000]  <1>
+    72 0000001D 48BE-               <1>  mov rsi, .str
+    73 0000001F [2900000000000000]  <1>
+    74 00000027 488B1425[00000000]  <1>  mov rdx, [a]
+    75 0000002F 488B0C25[08000000]  <1>  mov rcx, [b]
+    76 00000037 4C8B0425[00000000]  <1>  mov r8, [c]
+    77 0000003F 48B800000000000000- <1>  mov rax, 0
+    78 00000048 00                  <1>
+    79 00000049 E8(00000000)        <1>  call printf
+    80                                  
+    81                                  addb:				; c=a+b;
+    82 0000004E 488B0425[00000000]      	mov	rax,[a]	 	; load a
+    83 00000056 48030425[08000000]      	add	rax,[b]		; add b
+    84 0000005E 48890425[00000000]      	mov	[c],rax		; store into c
+    85                                  	pabc	"c=a+b"		; invoke the print macro
+    86                              <1>  section .data
+    87 0000002F 633D612B6200        <1>  .str db %1,0
+    88                              <1>  section .text
+    89 00000066 48BF-               <1>  mov rdi, fmt4
+    90 00000068 [1000000000000000]  <1>
+    91 00000070 48BE-               <1>  mov rsi, .str
+    92 00000072 [2F00000000000000]  <1>
+    93 0000007A 488B1425[00000000]  <1>  mov rdx, [a]
+    94 00000082 488B0C25[08000000]  <1>  mov rcx, [b]
+    95 0000008A 4C8B0425[00000000]  <1>  mov r8, [c]
+    96 00000092 48B800000000000000- <1>  mov rax, 0
+    97 0000009B 00                  <1>
+    98 0000009C E8(00000000)        <1>  call printf
+    99                                  
+   100                                  subb:				; c=a-b;
+   101 000000A1 488B0425[00000000]      	mov	rax,[a]	 	; load a
+   102 000000A9 482B0425[08000000]      	sub	rax,[b]		; subtract b
+   103 000000B1 48890425[00000000]      	mov	[c],rax		; store into c
+   104                                  	pabc	"c=a-b"		; invoke the print macro
+   105                              <1>  section .data
+   106 00000035 633D612D6200        <1>  .str db %1,0
+   107                              <1>  section .text
+   108 000000B9 48BF-               <1>  mov rdi, fmt4
+   109 000000BB [1000000000000000]  <1>
+   110 000000C3 48BE-               <1>  mov rsi, .str
+   111 000000C5 [3500000000000000]  <1>
+   112 000000CD 488B1425[00000000]  <1>  mov rdx, [a]
+   113 000000D5 488B0C25[08000000]  <1>  mov rcx, [b]
+   114 000000DD 4C8B0425[00000000]  <1>  mov r8, [c]
+   115 000000E5 48B800000000000000- <1>  mov rax, 0
+   116 000000EE 00                  <1>
+   117 000000EF E8(00000000)        <1>  call printf
+   118                                  
+   119                                  mulb:				; c=a*b;
+   120 000000F4 488B0425[00000000]      	mov	rax,[a]	 	; load a (must be rax for multiply)
+   121 000000FC 48F72C25[08000000]      	imul	qword [b]	; signed integer multiply by b
+   122 00000104 48890425[00000000]      	mov	[c],rax		; store bottom half of product into c
+   123                                  	pabc	"c=a*b"		; invoke the print macro
+   124                              <1>  section .data
+   125 0000003B 633D612A6200        <1>  .str db %1,0
+   126                              <1>  section .text
+   127 0000010C 48BF-               <1>  mov rdi, fmt4
+   128 0000010E [1000000000000000]  <1>
+   129 00000116 48BE-               <1>  mov rsi, .str
+   130 00000118 [3B00000000000000]  <1>
+   131 00000120 488B1425[00000000]  <1>  mov rdx, [a]
+   132 00000128 488B0C25[08000000]  <1>  mov rcx, [b]
+   133 00000130 4C8B0425[00000000]  <1>  mov r8, [c]
+   134 00000138 48B800000000000000- <1>  mov rax, 0
+   135 00000141 00                  <1>
+   136 00000142 E8(00000000)        <1>  call printf
+   137                                  
+   138                                  mulcx:				; c=b*b rcx;
+   139 00000147 488B0C25[08000000]      	mov	rcx,[b]	 	; load b into rcx
+   140 0000014F 480FAF0C25-             	imul	rcx,[b]	        ; signed integer multiply by b
+   141 00000154 [08000000]         
+   142 00000158 48890C25[00000000]      	mov	[c],rcx		; store bottom half of product into c
+   143                                  	pabc	"c=b*b rcx"	; invoke the print macro
+   144                              <1>  section .data
+   145 00000041 633D622A6220726378- <1>  .str db %1,0
+   146 0000004A 00                  <1>
+   147                              <1>  section .text
+   148 00000160 48BF-               <1>  mov rdi, fmt4
+   149 00000162 [1000000000000000]  <1>
+   150 0000016A 48BE-               <1>  mov rsi, .str
+   151 0000016C [4100000000000000]  <1>
+   152 00000174 488B1425[00000000]  <1>  mov rdx, [a]
+   153 0000017C 488B0C25[08000000]  <1>  mov rcx, [b]
+   154 00000184 4C8B0425[00000000]  <1>  mov r8, [c]
+   155 0000018C 48B800000000000000- <1>  mov rax, 0
+   156 00000195 00                  <1>
+   157 00000196 E8(00000000)        <1>  call printf
+   158                                  
+   159                                  mulbn:				; c=a*b;
+   160 0000019B 488B0425[00000000]      	mov	rax,[a]	 	; load a (must be rax for multiply)
+   161 000001A3 48F72425[08000000]      	mul	qword [b]	; signed integer multiply by b
+   162 000001AB 48890425[00000000]      	mov	[c],rax		; store bottom half of product into c
+   163                                  	pabc	"c=a*b mul"	; invoke the print macro
+   164                              <1>  section .data
+   165 0000004B 633D612A62206D756C- <1>  .str db %1,0
+   166 00000054 00                  <1>
+   167                              <1>  section .text
+   168 000001B3 48BF-               <1>  mov rdi, fmt4
+   169 000001B5 [1000000000000000]  <1>
+   170 000001BD 48BE-               <1>  mov rsi, .str
+   171 000001BF [4B00000000000000]  <1>
+   172 000001C7 488B1425[00000000]  <1>  mov rdx, [a]
+   173 000001CF 488B0C25[08000000]  <1>  mov rcx, [b]
+   174 000001D7 4C8B0425[00000000]  <1>  mov r8, [c]
+   175 000001DF 48B800000000000000- <1>  mov rax, 0
+   176 000001E8 00                  <1>
+   177 000001E9 E8(00000000)        <1>  call printf
+   178                                  
+   179                                  diva:				; c=c/a;   both idiv and div allowed
+   180 000001EE 488B0425[00000000]      	mov	rax,[c]	 	; load c
+   181 000001F6 48BA00000000000000-     	mov	rdx,0		; load upper half of dividend with zero
+   182 000001FF 00                 
+   183 00000200 48F73C25[00000000]      	idiv	qword [a]	; divide double register rdx rax by a
+   184 00000208 48890425[00000000]      	mov	[c],rax		; store quotient into c
+   185                                  	pabc	"c=c/a"		; invoke the print macro
+   186                              <1>  section .data
+   187 00000055 633D632F6100        <1>  .str db %1,0
+   188                              <1>  section .text
+   189 00000210 48BF-               <1>  mov rdi, fmt4
+   190 00000212 [1000000000000000]  <1>
+   191 0000021A 48BE-               <1>  mov rsi, .str
+   192 0000021C [5500000000000000]  <1>
+   193 00000224 488B1425[00000000]  <1>  mov rdx, [a]
+   194 0000022C 488B0C25[08000000]  <1>  mov rcx, [b]
+   195 00000234 4C8B0425[00000000]  <1>  mov r8, [c]
+   196 0000023C 48B800000000000000- <1>  mov rax, 0
+   197 00000245 00                  <1>
+   198 00000246 E8(00000000)        <1>  call printf
+   199                                  
+   200 0000024B 5D                      	pop	rbp		; pop stack
+   201 0000024C 48B800000000000000-     	        mov     rax,0	; exit code, 0=normal
+   202 00000255 00                 
+   203 00000256 C3                      	ret			; main returns to operating system
+   204                                  	

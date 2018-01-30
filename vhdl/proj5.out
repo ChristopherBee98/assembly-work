@@ -1,0 +1,14 @@
+ncsim: 06.11-s008: (c) Copyright 1995-2007 Cadence Design Systems, Inc.
+ncsim> run 20 ns
+                     ABCDEF=UUUUUU  I=0 activate=U
+                     ABCDEF=100000  I=0 activate=0
+                     ABCDEF=100000  I=1 activate=0
+                     ABCDEF=010000  I=1 activate=0
+                     ABCDEF=001000  I=0 activate=0
+                     ABCDEF=000100  I=1 activate=0
+                     ABCDEF=000010  I=1 activate=0
+                     ABCDEF=000001  I=1 activate=1
+                     ABCDEF=100000  I=0 activate=0
+                     ABCDEF=100000  I=1 activate=0
+Ran until 20 NS + 0
+ncsim> exit

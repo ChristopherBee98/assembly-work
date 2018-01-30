@@ -1,0 +1,9 @@
+Quine McClusky digital circuit minimization V1.0
+final prime implicants 
+gr a b c d e f  cv 
+0  0 0 0 - 0 0  0 
+0  - 0 0 0 0 0  0 
+0  0 1 - - 1 -  0 
+0  - 1 - 1 1 -  0 
+0  1 0 0 0 1 1  0 
+

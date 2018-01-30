@@ -1,0 +1,335 @@
+	;; convert.asm: converter for binary to decimal and decimal to binary
+	;; to convert from dec to bin, divide by 2 then print the remainder (126/2 = 63 and remainder is 0, so print 0)
+	;; write 2 extra macros for calling fmtCompDec and fmtCompBin
+	;; make a loop to put values in so they can be printed in right order
+	extern printf
+%macro	pabc1 1		; a "simple" print macro
+	section .data
+.str	db	%1,0	; %1 is first actual in macro call
+	section .text
+	mov     rdi, fmt1 ; first arg, format
+	mov	rsi, .str	  ; second arg
+	mov     rax, 0		  ; no xmm used
+	call    printf		  ; Call C function
+%endmacro
+
+%macro	pabc2 1
+	section .data
+.str2	db	%1,0
+	section .text
+	mov	rdi, fmt2
+	mov	rsi, .str2
+	mov	rax, 0
+	call	printf
+%endmacro
+
+%macro  pabc3 1
+	section .data
+.str    db      %1,0
+	section .text
+	mov     rdi, fmtCompDec
+	mov     rax, 0
+	call    printf
+%endmacro
+
+%macro  pabc4 1
+	section .data
+.str    db      %1,0
+	section .text
+	mov     rdi, fmtCompBin
+	mov     rax, 0
+	call    printf
+%endmacro
+
+%macro	pabc5 1
+	section .data
+.str	db	%1,0
+	section .text
+	mov	rdi, fmt3
+	mov	rsi, .str
+	mov	rdx, [sum3]
+	mov	rax,0
+	call	printf
+%endmacro
+
+%macro	pabc6 1
+	section .data
+.str	db	%1,0
+	section .text
+	mov	rdi, fmt4
+	mov	rsi, .str
+	mov	rdx, [sum4]
+	mov	rax,0
+	call	printf
+%endmacro
+	
+%macro	test 1
+	section .data
+.str1	db	%1,0
+	section .text
+	mov	rdi, testFmt
+	mov	rsi, .str1
+	mov	rdx, [sum3]
+	mov	rcx, [whole]
+	mov	rax,0
+	call	printf
+%endmacro
+	
+	section .data
+dec1:	db	'1','2','6','.','3','7','5',0
+bin1:	dq	01010110110111B ; 10101101.10111 note where binary point should be
+sum1:	dq	0
+sum2:	dq	0
+sum4:	dq	0.0
+remainder:	dq	0
+testFmt:	db	"%sSum = %ld, Whole = %ld",10,0
+fmtCompDec:	db	"126.375 =",10,0
+fmt1:	db	"%s",0
+fmt2:	db	"%s",10,0
+fmt3:	db	"%s%ld",0
+fmt4:	db	"%s%ld",10,0
+fmtCompBin:	db	"10101101.10111 =",10,0
+whole:	dq	0
+frack:	dq	0
+tempWhole:	dq	10101101B
+tempFrack:	dq	10111B
+thousand:	dq	1000
+a100:	dq	100
+a10:	dq	10
+a1:	dq	1
+counter:	dq	7
+temp:	dq	0
+b1:	dq	0.5
+b2:	dq	.125
+b3:	dq	.0625
+b4:	dq	.03125
+
+	section .bss
+bitw:	resq	7		;reserve 7 64-bit word for bits 1 or 0 (whole)
+bitf:	resq	3		;reserve 3 words for bits 1 or 0 (fraction)
+sum3:	resq	1
+
+	section .text
+
+	global	main
+main:
+	push	rbp
+decSeperation:	
+	mov  	rax,0
+	mov  	al,[dec1]
+	sub  	rax,48 		; now have binary 1
+	imul 	qword [a100] 	; now have binary 100 add 2*10+6 [dec1+1]*10+[dec1+2]
+	mov  	[sum1], rax 
+
+	mov  	rax,0
+	mov  	al,[dec1+1]
+	sub  	rax,48 		; now have binary 1
+	imul 	qword [a10]
+	add  	rax, [sum1]  	; now have binary 120
+	mov  	[sum1], rax
+
+	mov	rax,0		;now have the whole part of decimal: 126
+	mov	al,[dec1+2]
+	sub	rax,48
+	imul	qword [a1]
+	add	rax, [sum1]
+	mov	[sum1], rax
+
+	mov	rax,0		;seperate fraction part (when doing fraction, everytime it goes past 1000, sub 1000)
+	mov	al,[dec1+4]
+	sub	rax,48
+	imul	qword [a100]
+	mov	[sum2], rax
+
+	mov	rax,0
+	mov	al,[dec1+5]
+	sub	rax,48
+	imul	qword [a10]
+	add	rax, [sum2]
+	mov	[sum2], rax
+
+	mov	rax,0
+	mov	al,[dec1+6]
+	sub	rax,48
+	imul	qword [a1]
+	add	rax, [sum2]
+	mov	[sum2], rax
+binSeperation:
+	mov  	rax, [bin1]
+	shr  	rax, 5       	; shift off .10111  5 bits
+	mov  	[whole], rax 	; save  10101101  can print with %ld
+
+	mov  	rax, [bin1]
+	and  	rax, 31     	; 31 in binary is  11111  save the fraction
+	mov  	[frack], rax
+
+	mov	rax, [tempWhole]
+	mov	[whole], rax
+	mov	rax, [tempFrack]
+	mov	[frack], rax
+	
+	pabc3	" "
+decToBinWhole:	
+	;; compute decimal to binary
+	xor	rdx, rdx
+	mov	rax,[sum1]
+	mov	rcx,2
+	div	rcx
+	mov	[sum1],rax
+	mov	[remainder],rdx
+	mov	rdx,[remainder]
+	cmp	rdx,1
+	je	print1
+	mov	rax,[sum1]
+	cmp	rax,2
+	jl	buffer1
+	mov	r9,[counter]
+	mov	qword [bitw+r9*8],0
+	sub	r9,1
+	mov	[counter],r9
+	jmp	decToBinWhole
+print1:
+	mov	r9,[counter]
+	mov	qword [bitw+r9*8],1
+	sub	r9,1
+	mov	[counter],r9
+	jmp	decToBinWhole
+buffer1:
+	mov	r11,48
+	mov	[counter],r11
+	mov	rdi, [counter]
+	jmp	buffer3
+decPrint1:
+	pabc1	"1"
+	mov	rdi, [counter]
+	cmp	rdi, 0
+	je	buffer5
+	sub	rdi, 8
+	mov	[counter], rdi
+buffer3:
+	mov	r10, qword [bitw+rdi]
+	cmp	r10,1
+	je	decPrint1
+	pabc1	"0"
+	mov	rdi, [counter]
+	mov	[counter], rdi
+	cmp	rdi, 0
+	je	buffer5
+	jmp	buffer3
+buffer5:
+	pabc1	"."
+decToBinFraction:
+	;; compute decimal to binary fraction
+	mov	rax,[sum2]
+	imul	rax,2
+	mov	[sum2],rax
+	cmp	rax,[thousand]
+	jge	greaterThan1000
+	pabc1	"0"
+	jmp	decToBinFraction
+printDec:
+	;; printing the conversion after last case
+	pabc2	"1"
+	pabc4	" "
+	jmp	binToDecWhole
+greaterThan1000:
+	mov	rax,[sum2]
+	sub	rax,[thousand]
+	mov	[sum2],rax
+	cmp	rax,0
+	je	printDec
+	pabc1	"1"
+	mov	rax,[sum2]
+	jmp	decToBinFraction
+binToDecWhole:
+	;; compute binary to decimal
+	mov	rax,4
+	mov	[counter], rax
+	mov	rax,0
+	mov	[sum3], rax
+	mov	qword [bitw],10000000B
+	mov	r12, [sum3]
+	add	r12, 128
+	mov	[sum3], r12
+	mov	qword [bitw+1*8],100000B
+	add	r12, 32
+	mov	[sum3], r12
+	mov	qword [bitw+2*8],1000B
+	add	r12, 8
+	mov	[sum3], r12
+	mov	qword [bitw+3*8],100B
+	add	r12, 4
+	mov	[sum3], r12
+	mov	qword [bitw+4*8],1B
+	add	r12, 1
+	mov	[sum3], r12
+	mov	rax, [whole]
+	mov	rdi, 0
+loop1:
+	mov	r10, [bitw+rdi]	;128+32+8+4+1
+	mov	rax, [whole]
+	sub	rax, [bitw+rdi]
+	mov	[whole], rax
+	add	rdi, 8
+	cmp	rdi, 5*8
+	jne	loop1
+	pabc5	""
+buffer2:
+	;; put dot here
+	pabc1	"."
+binToDecFraction:
+	;; compute binary to decimal fraction
+	mov	rax,3
+	mov	[counter], rax
+	mov	rax,0
+	mov	[sum4], rax
+	mov	qword [bitf],10000B
+	mov	r12, [sum4]
+	fld	qword [sum4]
+	fld	qword [b1]
+	fadd	st0, st1
+	mov	[sum4], st0
+	mov	qword [bitf+1*8],100B
+	fld	qword [sum4]
+	fld	qword [b2]
+	fadd	st0, st1
+	mov	[sum4], st0
+	mov	qword [bitf+2*8],10B
+	fld	qword [sum4]
+	fld	qword [b3]
+	fadd	st0, st1
+	mov	[sum4], st0
+	mov	qword [bitf+3*8],1B
+	fld	qword [sum4]
+	fld	qword [b4]
+	fadd	st0, st1
+	mov	[sum4], st0
+	mov	rax, [frack]
+	mov	rdi, 0
+loop2:
+	mov     r10, [bitf+rdi] ;.5+.125+.0625+.03125
+	mov     rax, [frack]
+	sub     rax, [bitf+rdi]
+	mov     [frack], rax
+	add     rdi, 8
+	cmp     rdi, 4*8
+	jne     loop2
+	pabc6   ""
+printBin:
+	;; print the converstion
+	jmp	exit
+exit:	
+
+	mov	rax,0
+	mov	al,0
+	mov	rdi,0
+	mov	rsi,0
+	mov	rdx,0
+	mov	rcx,0
+	mov	r8,0
+	mov	r9,0
+	mov	r10,0
+	mov	r11,0
+	mov	r12,0
+	pop	rbp
+	ret

@@ -1,0 +1,14 @@
+out <= 
+  (not a and not b and not c           and not e and not f ) or
+  (          not b and not c and not d and not e and not f ) or
+  (not a and     b                     and     e           ) or
+  (              b           and     d and     e           ) or
+  (    a and not b and not c and not d and     e and     f );
+
+out = 
+  (~a & ~b & ~c      & ~e & ~f ) |
+  (     ~b & ~c & ~d & ~e & ~f ) |
+  (~a &  b           &  e      ) |
+  (      b      &  d &  e      ) |
+  ( a & ~b & ~c & ~d &  e &  f );
+
